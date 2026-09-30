@@ -1,0 +1,2 @@
+-- Seed file intentionally left empty for the initial migration phase.
+-- Add realistic demo seed data only after the schema and RLS policy architecture is finalized.
