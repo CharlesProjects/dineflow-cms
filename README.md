@@ -14,8 +14,8 @@ This project includes:
 Before you begin, make sure you have:
 - Node.js 20+ and npm
 - Git
-- Docker Desktop or Podman running if you want to use the local Supabase database
-- A Supabase account if you want to connect to a hosted project instead of local Docker-based Supabase
+- A hosted Supabase project
+- Supabase CLI (the `npx supabase` commands below can run it without a global install)
 
 ## 1. Install dependencies
 
@@ -25,7 +25,15 @@ From the project root:
 npm install
 ```
 
-## 2. Configure environment variables
+## 2. Configure the hosted Supabase project
+
+In the Supabase dashboard, open your project and copy:
+- Project URL from **Project Settings > API**
+- The publishable key (or legacy anon key) from **Project Settings > API Keys**
+
+In **Authentication > URL Configuration**, set the local development URL to `http://localhost:5173` and add it to the allowed redirect URLs. Add your production website URL there before deploying.
+
+## 3. Configure environment variables
 
 Copy the example file:
 
@@ -41,70 +49,51 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-or-publishable-key
 VITE_APP_NAME=Savoria Restaurant Demo
 ```
 
-If you are not yet connected to a live Supabase project, the app will still run with fallback demo content. The admin login will remain blocked until Supabase credentials are added.
+Use only the publishable/anon key in this frontend environment. Never put a Supabase service-role key in a `VITE_` variable or commit it to the repository. If credentials are missing, the public site falls back to demo content and admin login is unavailable.
 
-## 3. Choose a Supabase setup option
+## 4. Link the repository and apply migrations
 
-### Option A: Local Supabase via Docker
-
-If you want to run Supabase locally:
+From the project root, authenticate the Supabase CLI and link this repository to your hosted project:
 
 ```bash
-npx supabase init
-npx supabase start
-```
-
-This requires Docker Desktop or another compatible container runtime. Once running, the local API and Studio URLs will be printed in the terminal. Use those values for your `.env` file.
-
-### Option B: Hosted Supabase project
-
-Create a project in Supabase, then copy the project URL and anon/publishable key into your `.env` file.
-
-## 4. Apply the database schema and security rules
-
-The project includes migration files under `supabase/migrations`.
-
-If using the local Supabase instance:
-
-```bash
-npx supabase db push
-```
-
-Or, if you are using a linked hosted project:
-
-```bash
+npx supabase login
 npx supabase link --project-ref <your-project-ref>
+```
+
+The project ref is shown in the Supabase dashboard URL or under **Project Settings > General**. The CLI may ask for your database password while linking; enter it in the terminal and do not commit it.
+
+Review the SQL files under `supabase/migrations`, then apply them to the linked project:
+
+```bash
 npx supabase db push
 ```
 
-This applies the restaurant schema, auth-related access patterns, and RLS/security rules.
+This creates the database schema, RLS policies, and storage policies defined by the migrations. Confirm the migrations completed in the CLI output and inspect the resulting tables and policies in the Supabase dashboard.
 
 ## 5. Run the app locally
-
-Start the development server:
 
 ```bash
 npm run dev
 ```
 
-Open the local Vite URL in the browser, usually:
+Open the local Vite URL:
 
 ```text
 http://localhost:5173
 ```
 
-## 6. Log in to the admin area
+## 6. Configure an admin user
 
-The app includes a protected CMS shell at:
+Create the user in **Authentication > Users** in the Supabase dashboard, then configure the corresponding business and profile records required by the schema and RLS policies. The protected admin routes are:
 
 ```text
 /login
 /dashboard
 ```
 
-To use the authenticated admin area, you must create a user in Supabase Auth and ensure that the profile/business permissions are configured in the database.
+Do not enable public sign-ups for a production admin system unless you also implement and verify a controlled account provisioning flow.
 
-## 7. Verify the build
+## 7. Verify the project
 
 Before shipping or pushing changes:
 
@@ -140,14 +129,20 @@ supabase/
 - The local demo content exists so the app can render even before the backend is connected.
 - This project is designed as a secure hospitality CMS template, not just a static landing page.
 
-## Typical local workflow
+## Typical hosted-project workflow
 
 ```bash
 npm install
 copy .env.example .env
-npx supabase start
+npx supabase login
+npx supabase link --project-ref <your-project-ref>
 npx supabase db push
 npm run dev
 ```
 
-If you want to switch from local demo mode to a live connected database, update your `.env` file and re-run the app.
+## Current integration boundary
+
+- The public content layer attempts to read business settings, hours, menu, testimonials, and FAQs from Supabase when configured.
+- The admin settings, menu, and hours forms currently save to the browser's local storage. They do not write changes to Supabase yet, and local edits are not shared across browsers or users.
+- Do not treat the current admin content forms as production-ready database management until Supabase-backed writes and authorization checks are implemented and verified.
+- The Supabase schema and RLS policies are the intended database security boundary; frontend route protection alone is not authorization.

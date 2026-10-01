@@ -20,10 +20,7 @@ AS $$
   SELECT p_path ~ '^business/[0-9a-fA-F-]+/public/'
 $$;
 
-SELECT storage.create_bucket('business-assets', public => false, file_size_limit => '10MB', allowed_mime_types => ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']);
-SELECT storage.create_bucket('business-public', public => true, file_size_limit => '10MB', allowed_mime_types => ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']);
 
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "business_assets_private_upload_same_business"
 ON storage.objects
@@ -190,14 +187,6 @@ TO anon
 USING (false)
 WITH CHECK (false);
 
-CREATE POLICY "business_public_no_list_all_objects"
-ON storage.objects
-FOR LIST
-TO authenticated
-USING (false);
 
-CREATE POLICY "business_public_no_list_all_objects_anon"
-ON storage.objects
-FOR LIST
-TO anon
-USING (false);
+
+
