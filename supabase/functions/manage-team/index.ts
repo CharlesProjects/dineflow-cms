@@ -77,7 +77,7 @@ Deno.serve(async (request) => {
     const siteUrl = Deno.env.get('SITE_URL')
     const { data: inviteData, error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
       data: { full_name: fullName },
-      ...(siteUrl ? { redirectTo: `${siteUrl.replace(/\/$/, '')}/login` } : {}),
+      ...(siteUrl ? { redirectTo: `${siteUrl.replace(/\/$/, '')}/auth/setup` } : {}),
     })
 
     if (inviteError || !inviteData.user) {

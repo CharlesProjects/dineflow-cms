@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useBusinessProfile } from '../context/useBusinessProfile'
 import { tryRecordAuditEvent } from '../lib/audit'
+import { deleteBusinessImage, getBusinessImagePath, uploadBusinessImage, validateBusinessImage } from '../lib/business-images'
 import {
   createAdminMenuItem,
   createMenuCategory,
+  deleteMenuCategory,
   deleteAdminMenuItem,
   fetchAdminMenuItems,
   fetchMenuCategories,
@@ -17,7 +19,7 @@ type MenuDraft = {
   category_id: string
   name: string
   description: string
-  price: number
+  price: string
   image_url: string
   is_featured: boolean
   is_available: boolean
@@ -28,7 +30,7 @@ const emptyDraft: MenuDraft = {
   category_id: '',
   name: '',
   description: '',
-  price: 0,
+  price: '',
   image_url: '',
   is_featured: false,
   is_available: true,
@@ -41,6 +43,8 @@ export function MenuPage() {
   const [items, setItems] = useState<AdminMenuItem[]>([])
   const [loadedBusinessId, setLoadedBusinessId] = useState<string | null>(null)
   const [draft, setDraft] = useState<MenuDraft>(emptyDraft)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
   const [categoryName, setCategoryName] = useState('')
   const [status, setStatus] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -74,10 +78,36 @@ export function MenuPage() {
   }, [profile?.business_id])
 
   const handleChange = (field: keyof MenuDraft, value: string | boolean | number) => {
+    if (field === 'price' && typeof value === 'string') {
+      const input = value.replace(/[^\d.]/g, '')
+      const decimalIndex = input.indexOf('.')
+      const integer = (decimalIndex < 0 ? input : input.slice(0, decimalIndex)).replace(/^0+(?=\d)/, '')
+      const fraction = decimalIndex < 0 ? '' : `.${input.slice(decimalIndex + 1).replace(/\./g, '').slice(0, 2)}`
+      setDraft((current) => ({ ...current, price: `${integer || (fraction ? '0' : '')}${fraction}` }))
+      return
+    }
+
     setDraft((current) => ({
       ...current,
       [field]: value,
     }))
+  }
+
+  const handleImageSelection = (file: File | undefined) => {
+    setErrorMessage('')
+    if (!file) {
+      setImageFile(null)
+      return
+    }
+
+    try {
+      validateBusinessImage(file)
+      setImageFile(file)
+    } catch (error) {
+      setImageFile(null)
+      if (imageInputRef.current) imageInputRef.current.value = ''
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to use this image.')
+    }
   }
 
   const handleCreateCategory = async () => {
@@ -107,25 +137,38 @@ export function MenuPage() {
   }
 
   const handleSave = async () => {
-    if (!profile?.business_id || !canEdit || !draft.category_id || !draft.name.trim() || draft.price < 0) {
-      setErrorMessage('Choose a category, enter a dish name, and enter a non-negative price.')
+    const normalizedPrice = draft.price.trim()
+    if (!profile?.business_id || !canEdit || !draft.category_id || !draft.name.trim() || !/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(normalizedPrice)) {
+      setErrorMessage('Choose a category, enter a dish name, and enter a price such as 20 or 20.50.')
       return
     }
 
     setIsSaving(true)
     setErrorMessage('')
     setStatus('')
+    let uploadedPath: string | null = null
     try {
+      let imageUrl = draft.image_url.trim() || null
+      if (imageFile) {
+        const uploaded = await uploadBusinessImage(profile.business_id, 'menu', imageFile)
+        uploadedPath = uploaded.path
+        imageUrl = uploaded.publicUrl
+      }
+
       const item = await createAdminMenuItem(profile.business_id, {
         ...draft,
         name: draft.name.trim(),
         description: draft.description.trim() || null,
-        image_url: draft.image_url.trim() || null,
+        price: Number(normalizedPrice),
+        image_url: imageUrl,
         display_order: items.length,
       })
+      uploadedPath = null
       const categoryName = categories.find((category) => category.id === item.category_id)?.name ?? 'Uncategorized'
       setItems((current) => [...current, { ...item, price: Number(item.price), category_name: categoryName } as AdminMenuItem])
       setDraft({ ...emptyDraft, category_id: categories[0]?.id ?? '' })
+      setImageFile(null)
+      if (imageInputRef.current) imageInputRef.current.value = ''
       const audited = await tryRecordAuditEvent({
         business_id: profile.business_id,
         action: 'create',
@@ -135,7 +178,49 @@ export function MenuPage() {
       })
       setStatus(audited ? 'Menu item saved and recorded.' : 'Menu item saved. The audit function could not record this change.')
     } catch (error) {
+      if (uploadedPath) {
+        try {
+          await deleteBusinessImage(uploadedPath)
+        } catch {
+          setErrorMessage('The menu item was not saved and the uploaded image could not be cleaned up.')
+          return
+        }
+      }
       setErrorMessage(error instanceof Error ? error.message : 'Unable to save menu item.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDeleteCategory = async (category: MenuCategoryRecord) => {
+    if (!profile?.business_id || !canEdit) return
+    const dishCount = items.filter((item) => item.category_id === category.id).length
+    if (dishCount > 0) {
+      setErrorMessage(`Remove the ${dishCount} dish${dishCount === 1 ? '' : 'es'} in ${category.name} before deleting this category.`)
+      return
+    }
+    if (!window.confirm(`Delete the empty category "${category.name}"?`)) return
+
+    setIsSaving(true)
+    setErrorMessage('')
+    setStatus('')
+    try {
+      await deleteMenuCategory(profile.business_id, category.id)
+      const remainingCategories = categories.filter((entry) => entry.id !== category.id)
+      setCategories(remainingCategories)
+      setDraft((current) => ({
+        ...current,
+        category_id: current.category_id === category.id ? remainingCategories[0]?.id ?? '' : current.category_id,
+      }))
+      const audited = await tryRecordAuditEvent({
+        business_id: profile.business_id,
+        action: 'delete',
+        entity_table: 'menu_categories',
+        entity_id: category.id,
+      })
+      setStatus(audited ? 'Category deleted and recorded.' : 'Category deleted. The audit function could not record this change.')
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to delete this category.')
     } finally {
       setIsSaving(false)
     }
@@ -185,15 +270,31 @@ export function MenuPage() {
     if (!profile?.business_id || !canEdit) return
     setErrorMessage('')
     try {
+      const item = items.find((entry) => entry.id === itemId)
       await deleteAdminMenuItem(profile.business_id, itemId)
       setItems((current) => current.filter((item) => item.id !== itemId))
+      const imagePath = item?.image_url
+        ? getBusinessImagePath(item.image_url, profile.business_id, 'menu')
+        : null
+      let imageCleanupFailed = false
+      if (imagePath) {
+        try {
+          await deleteBusinessImage(imagePath)
+        } catch {
+          imageCleanupFailed = true
+        }
+      }
       const audited = await tryRecordAuditEvent({
         business_id: profile.business_id,
         action: 'delete',
         entity_table: 'menu_items',
         entity_id: itemId,
       })
-      setStatus(audited ? 'Menu item removed and recorded.' : 'Menu item removed. The audit function could not record this change.')
+      setStatus(imageCleanupFailed
+        ? 'Menu item removed, but its stored image could not be removed.'
+        : audited
+          ? 'Menu item removed and recorded.'
+          : 'Menu item removed. The audit function could not record this change.')
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to remove menu item.')
     }
@@ -219,7 +320,25 @@ export function MenuPage() {
             </label>
             <button type="button" onClick={handleCreateCategory} disabled={!canEdit || isSaving || !categoryName.trim()} className="cms-button-primary self-end disabled:cursor-not-allowed disabled:bg-stone-300">Create category</button>
           </div>
-          {categories.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{categories.map((category) => <button key={category.id} type="button" disabled={!canEdit} onClick={() => void handleCategoryPublish(category)} className={`rounded-sm px-2.5 py-1.5 text-xs font-medium disabled:cursor-default ${category.is_published ? 'bg-[#e8ecdf] text-[#526044]' : 'bg-[#ebe9e1] text-[#65665e]'}`}>{category.name} · {category.is_published ? 'Published' : 'Draft'}{canEdit ? ' · toggle' : ''}</button>)}</div>}
+          {categories.length > 0 && (
+            <div className="mt-4 divide-y divide-[#e7e4db] rounded-md border border-[#e7e4db] px-3">
+              {categories.map((category) => {
+                const dishCount = items.filter((item) => item.category_id === category.id).length
+                return (
+                  <div key={category.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{category.name}</p>
+                      <p className="mt-1 text-xs text-[#85857b]">{dishCount} {dishCount === 1 ? 'dish' : 'dishes'} · {category.is_published ? 'Published' : 'Draft'}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" disabled={!canEdit || isSaving} onClick={() => void handleCategoryPublish(category)} className="rounded-md border border-[#d9d7ce] px-3 py-2 text-xs font-semibold disabled:opacity-50">{category.is_published ? 'Unpublish' : 'Publish'}</button>
+                      <button type="button" disabled={!canEdit || isSaving} onClick={() => void handleDeleteCategory(category)} className="rounded-md border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50">Delete category</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -244,19 +363,26 @@ export function MenuPage() {
           <label className="block text-sm font-medium text-stone-700">
             Price
             <input
-              type="number"
-              min="0"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
+              placeholder="20"
               value={draft.price}
-              onChange={(event) => handleChange('price', Number(event.target.value))}
+              onChange={(event) => handleChange('price', event.target.value)}
               className="cms-control mt-1.5"
               disabled={!canEdit || isLoading}
+              required
             />
           </label>
 
           <label className="block text-sm font-medium text-stone-700 md:col-span-2">
-            Image URL <span className="font-normal text-[#85857b]">(optional)</span>
-            <input type="url" value={draft.image_url} onChange={(event) => handleChange('image_url', event.target.value)} className="cms-control mt-1.5" disabled={!canEdit} />
+            Dish image <span className="font-normal text-[#85857b]">(JPEG, PNG, WebP; up to 5 MB)</span>
+            <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => handleImageSelection(event.target.files?.[0])} className="cms-control mt-1.5 file:mr-4 file:rounded file:border-0 file:bg-[#eeece3] file:px-3 file:py-2 file:text-xs file:font-semibold" disabled={!canEdit || isSaving || isLoading} />
+            {imageFile && <span className="mt-1 block text-xs text-[#526044]">Selected: {imageFile.name}</span>}
+          </label>
+
+          <label className="block text-sm font-medium text-stone-700 md:col-span-2">
+            Or use an image URL <span className="font-normal text-[#85857b]">(optional; uploaded file takes priority)</span>
+            <input type="url" value={draft.image_url} onChange={(event) => handleChange('image_url', event.target.value)} className="cms-control mt-1.5" disabled={!canEdit || isLoading} />
           </label>
 
           <label className="block text-sm font-medium text-stone-700 md:col-span-2">
@@ -324,6 +450,7 @@ export function MenuPage() {
                   <p className="mt-1 text-xs font-medium uppercase tracking-wide text-[#85857b]">{item.category_name}</p>
                   <p className="mt-1 text-sm text-stone-600">{item.description}</p>
                   <p className="mt-1 text-sm font-medium text-stone-900">${item.price}</p>
+                  {item.image_url && <img src={item.image_url} alt={item.name} className="mt-3 h-20 w-28 rounded-md object-cover" loading="lazy" />}
                 </div>
 
                 <div className="flex items-center gap-2">

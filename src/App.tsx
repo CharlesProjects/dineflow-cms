@@ -12,11 +12,13 @@ import { ReservationsPage } from './pages/ReservationsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TeamPage } from './pages/TeamPage'
 import { LoginPage } from './pages/LoginPage'
+import { AuthSetupPage } from './pages/AuthSetupPage'
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/auth/setup" element={<AuthSetupPage />} />
 
       <Route element={<PublicOnlyRoute />}>
         <Route path="/login" element={<LoginPage />} />

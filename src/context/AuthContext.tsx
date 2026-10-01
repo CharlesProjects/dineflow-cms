@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: new Error('Supabase credentials are not configured yet.') }
     }
 
-    const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined
+    const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/setup` : undefined
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl,

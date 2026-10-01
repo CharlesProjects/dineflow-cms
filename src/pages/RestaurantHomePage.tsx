@@ -127,8 +127,9 @@ export function RestaurantHomePage() {
   const currentDay = calendar?.day ?? ''
   const todayHours = hours.find((entry) => entry.day === currentDay)
   const phoneLink = business?.phone?.replace(/[^\d+]/g, '')
-  const socialLinks = Object.entries(business?.social_links ?? {}).filter(([, url]) =>
-    /^https?:\/\//i.test(url),
+  const logoUrl = business?.social_links?.logo_url
+  const socialLinks = Object.entries(business?.social_links ?? {}).filter(([name, url]) =>
+    name !== 'logo_url' && /^https?:\/\//i.test(url),
   )
 
   return (
@@ -136,7 +137,9 @@ export function RestaurantHomePage() {
       <header className="sticky top-0 z-40 border-b border-[#e7e4db] bg-[#fbfaf6]/95 backdrop-blur-sm">
         <nav aria-label="Main navigation" className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-3.5 sm:px-8 lg:px-12">
           <a href="#top" className="flex min-w-0 items-center gap-3" aria-label={`${displayName}, home`}>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#a84f35]/30 font-display text-xl text-[#a84f35]">S</span>
+            {logoUrl
+              ? <img src={logoUrl} alt={`${displayName} logo`} className="h-10 w-10 shrink-0 rounded-full border border-[#e7e4db] bg-white object-contain" />
+              : <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#a84f35]/30 font-display text-xl text-[#a84f35]">S</span>}
             <span className="min-w-0">
               <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.22em] text-[#74756c]">Neighborhood restaurant</span>
               <span className="block truncate text-sm font-semibold sm:text-base">{displayName}</span>

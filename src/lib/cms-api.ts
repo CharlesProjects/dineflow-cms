@@ -190,6 +190,16 @@ export async function updateMenuCategory(
   if (error) throw error
 }
 
+export async function deleteMenuCategory(businessId: string, categoryId: string) {
+  const { error } = await supabase
+    .from('menu_categories')
+    .delete()
+    .eq('business_id', businessId)
+    .eq('id', categoryId)
+
+  if (error) throw error
+}
+
 export async function fetchAdminMenuItems(businessId: string) {
   const { data, error } = await supabase
     .from('menu_items')
