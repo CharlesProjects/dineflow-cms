@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { isSupabaseConfigured } from '../lib/supabase'
 
@@ -64,35 +64,53 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-100 px-4 py-12">
-      <div className="w-full max-w-md rounded-[2rem] border border-stone-200 bg-white p-6 shadow-lg sm:p-8">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-400 text-lg font-bold text-stone-950">
-            S
-          </div>
-          <p className="text-xs uppercase tracking-[0.27em] text-stone-500">Savoria CMS</p>
-          <h1 className="mt-3 text-3xl font-semibold text-stone-900">Welcome back</h1>
+    <div className="min-h-screen bg-[#f4f3ed] lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="relative flex min-h-[230px] items-end overflow-hidden bg-[#252720] px-6 py-8 sm:min-h-[300px] sm:px-10 lg:min-h-screen lg:px-14 lg:py-14">
+        <img
+          src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1800&q=85"
+          alt="An intimate restaurant table set for dinner"
+          className="absolute inset-0 h-full w-full object-cover opacity-70"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1c1e18]/90 via-[#1c1e18]/25 to-transparent" />
+        <div className="relative z-10 max-w-xl text-white">
+          <Link to="/" className="inline-flex items-center gap-3 text-sm font-medium text-white/80 hover:text-white"><span aria-hidden="true">←</span> Back to the restaurant</Link>
+          <p className="mt-10 text-xs font-semibold uppercase tracking-[0.22em] text-[#edc9a7] lg:mt-16">DineFlow · Restaurant CMS</p>
+          <h1 className="font-display mt-3 text-4xl leading-tight sm:text-5xl">A little care behind every detail.</h1>
+          <p className="mt-4 max-w-md text-sm leading-6 text-white/75">Manage your restaurant's public presence from one considered workspace.</p>
         </div>
+      </section>
+
+      <section className="flex items-center justify-center px-5 py-12 sm:px-8 lg:px-12">
+        <div className="w-full max-w-md">
+          <div className="mb-8">
+            <Link to="/" className="inline-flex items-center gap-3 text-sm font-semibold text-[#252720]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-[#a84f35] font-display text-lg text-white">D</span>
+              DineFlow
+            </Link>
+            <p className="mt-9 text-xs font-semibold uppercase tracking-[0.2em] text-[#a84f35]">Secure team access</p>
+            <h2 className="font-display mt-2 text-4xl text-[#252720]">Welcome back</h2>
+            <p className="mt-2 text-sm text-[#74756c]">Sign in to manage your restaurant content.</p>
+          </div>
 
         {!isSupabaseConfigured && (
-          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <div role="status" className="mb-4 rounded-md border border-[#e8c98f] bg-[#fbf4e7] px-3 py-3 text-sm text-[#725529]">
             Supabase environment variables are missing. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY before sign-in is enabled.
           </div>
         )}
 
         {errorMessage && (
-          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
             {errorMessage}
           </div>
         )}
 
         {infoMessage && (
-          <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <div role="status" className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-700">
             {infoMessage}
           </div>
         )}
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="mb-2 block text-sm font-medium text-stone-700">
               Email
@@ -103,7 +121,7 @@ export function LoginPage() {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-3 py-2.5 text-stone-900 outline-none transition focus:border-stone-500 focus:ring-2 focus:ring-amber-200"
+              className="cms-control mt-1.5"
               placeholder="manager@savoria.demo"
               disabled={!isSupabaseConfigured}
             />
@@ -119,7 +137,7 @@ export function LoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-3 py-2.5 text-stone-900 outline-none transition focus:border-stone-500 focus:ring-2 focus:ring-amber-200"
+              className="cms-control mt-1.5"
               placeholder="••••••••"
               disabled={!isSupabaseConfigured}
             />
@@ -128,19 +146,21 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting || !isSupabaseConfigured}
-            className="w-full rounded-2xl bg-stone-900 px-4 py-3 font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300"
+            className="cms-button-primary w-full disabled:cursor-not-allowed disabled:border-stone-300 disabled:bg-stone-300"
           >
             {isSubmitting ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
 
-        <div className="mt-5 flex items-center justify-between gap-4 text-sm text-stone-600">
-          <button type="button" onClick={handlePasswordReset} className="font-medium text-amber-700 hover:text-amber-800">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-4 text-sm text-[#74756c]">
+          <button type="button" onClick={handlePasswordReset} className="font-semibold text-[#813a28] hover:underline">
             Reset password
           </button>
-          <span>Protected CMS access</span>
+          <span>Protected access</span>
         </div>
-      </div>
+        <p className="mt-10 border-t border-[#e7e4db] pt-5 text-xs leading-5 text-[#85857b]">Authorized restaurant team members only. Access is secured through Supabase authentication.</p>
+        </div>
+      </section>
     </div>
   )
 }

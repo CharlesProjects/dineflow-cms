@@ -7,9 +7,16 @@ if (!supabaseUrl || !supabasePublishableKey) {
   console.warn('Supabase environment variables are not configured yet.')
 }
 
-export const supabase = createClient(
-  supabaseUrl ?? 'https://placeholder.supabase.co',
-  supabasePublishableKey ?? 'placeholder-key',
-)
+const clientUrl = supabaseUrl ?? 'https://placeholder.supabase.co'
+const publishableKey = supabasePublishableKey ?? 'placeholder-key'
+
+export const supabase = createClient(clientUrl, publishableKey)
+export const publicSupabase = createClient(clientUrl, publishableKey, {
+  auth: {
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+    persistSession: false,
+  },
+})
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey)

@@ -1,11 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
 @import 'tailwindcss';
 
 :root {
-  font-family: Inter, 'Segoe UI', sans-serif;
+  font-family: 'DM Sans', sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --color-ink: #252720;
+  --color-muted: #74756c;
+  --color-paper: #f6f5f0;
+  --color-panel: #fffefa;
+  --color-line: #e7e4db;
+  --color-accent: #a84f35;
+  --color-accent-dark: #813a28;
+  --color-olive: #707653;
   line-height: 1.5;
   font-weight: 400;
-  color: #1c1917;
-  background-color: #f5f5f4;
+  color: var(--color-ink);
+  background-color: var(--color-paper);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -20,7 +30,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #f5f5f4;
+  background: var(--color-paper);
 }
 
 #root {
@@ -30,6 +40,85 @@ body {
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:not(:disabled),
+a {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid #cf896f;
+  outline-offset: 3px;
+}
+
+::placeholder {
+  color: #99988e;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.cms-control {
+  display: block;
+  width: 100%;
+  border: 1px solid #d9d7ce;
+  border-radius: 0.65rem;
+  background: #fffefa;
+  padding: 0.7rem 0.85rem;
+  color: var(--color-ink);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.cms-control:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgb(168 79 53 / 12%);
+  outline: none;
+}
+
+.cms-button-primary {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-ink);
+  border-radius: 0.65rem;
+  background: var(--color-ink);
+  padding: 0.65rem 1rem;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.cms-button-primary:hover:not(:disabled) {
+  border-color: var(--color-accent-dark);
+  background: var(--color-accent-dark);
+}
+
+.cms-panel {
+  border: 1px solid var(--color-line);
+  border-radius: 0.9rem;
+  background: var(--color-panel);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 ::selection {

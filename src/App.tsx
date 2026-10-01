@@ -1,13 +1,16 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute, PublicOnlyRoute } from './components/ProtectedRoute'
+import { AuditPage } from './pages/AuditPage'
 import { AuthProvider } from './context/AuthContext'
 import { AdminLayout } from './pages/AdminLayout'
-import { HomePage } from './pages/HomePage'
+import { RestaurantHomePage as HomePage } from './pages/RestaurantHomePage'
 import { HoursPage } from './pages/HoursPage'
+import { GalleryPage } from './pages/GalleryPage'
 import { MenuPage } from './pages/MenuPage'
 import { OverviewPage } from './pages/OverviewPage'
+import { ReservationsPage } from './pages/ReservationsPage'
 import { SettingsPage } from './pages/SettingsPage'
-import { DashboardPage } from './pages/DashboardPage'
+import { TeamPage } from './pages/TeamPage'
 import { LoginPage } from './pages/LoginPage'
 
 function AppRoutes() {
@@ -25,10 +28,10 @@ function AppRoutes() {
           <Route path="/dashboard/settings" element={<SettingsPage />} />
           <Route path="/dashboard/menu" element={<MenuPage />} />
           <Route path="/dashboard/hours" element={<HoursPage />} />
-          <Route path="/dashboard/reservations" element={<DashboardPage />} />
-          <Route path="/dashboard/gallery" element={<DashboardPage />} />
-          <Route path="/dashboard/users" element={<DashboardPage />} />
-          <Route path="/dashboard/audit" element={<DashboardPage />} />
+          <Route path="/dashboard/reservations" element={<ReservationsPage />} />
+          <Route path="/dashboard/gallery" element={<GalleryPage />} />
+          <Route path="/dashboard/users" element={<TeamPage />} />
+          <Route path="/dashboard/audit" element={<AuditPage />} />
         </Route>
       </Route>
 

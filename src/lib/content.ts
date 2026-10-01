@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from './supabase'
+import { getPublicBusinessId } from './tenant'
 
 export type BusinessSettings = {
   business_name: string
@@ -9,6 +10,7 @@ export type BusinessSettings = {
   address: string
   map_url: string
   website_url: string
+  social_links: Record<string, string>
   hero_title: string
   hero_description: string
   primary_contact_name: string
@@ -54,6 +56,15 @@ export type FaqItem = {
   answer: string
 }
 
+export type GalleryItem = {
+  id: string
+  image_url: string
+  title: string | null
+  alt_text: string | null
+  description: string | null
+  display_order: number
+}
+
 const demoBusinessSettings: BusinessSettings = {
   business_name: 'Savoria Restaurant',
   tagline: 'Good food. Good moments.',
@@ -64,6 +75,7 @@ const demoBusinessSettings: BusinessSettings = {
   address: '128 Market Street, Portland, OR',
   map_url: 'https://maps.google.com/?q=128+Market+Street+Portland+OR',
   website_url: 'https://savoria.demo',
+  social_links: {},
   hero_title: 'Good food. Good moments.',
   hero_description:
     'A premium casual dining experience built to showcase a reusable restaurant CMS for hospitality businesses.',
@@ -79,7 +91,6 @@ const demoHours: BusinessHour[] = [
   { day_of_week: 5, open_time: '17:00', close_time: '22:30', is_closed: false, is_published: true },
   { day_of_week: 6, open_time: '12:00', close_time: '22:30', is_closed: false, is_published: true },
   { day_of_week: 0, open_time: '12:00', close_time: '21:00', is_closed: false, is_published: true },
-  { day_of_week: 0, open_time: null, close_time: null, is_closed: true, is_published: true },
 ]
 
 const demoMenu: MenuCategory[] = [
@@ -172,13 +183,15 @@ const demoFaqs: FaqItem[] = [
 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 export async function fetchBusinessSettings(): Promise<BusinessSettings> {
-  if (!isSupabaseConfigured) {
+  const businessId = getPublicBusinessId()
+  if (!isSupabaseConfigured || !businessId) {
     return demoBusinessSettings
   }
 
   const { data, error } = await supabase
     .from('business_settings')
     .select('*')
+    .eq('business_id', businessId)
     .eq('is_published', true)
     .maybeSingle()
 
@@ -195,6 +208,7 @@ export async function fetchBusinessSettings(): Promise<BusinessSettings> {
     address: data.address ?? demoBusinessSettings.address,
     map_url: data.map_url ?? demoBusinessSettings.map_url,
     website_url: data.website_url ?? demoBusinessSettings.website_url,
+    social_links: getSocialLinks(data.social_links),
     hero_title: data.hero_title ?? demoBusinessSettings.hero_title,
     hero_description: data.hero_description ?? demoBusinessSettings.hero_description,
     primary_contact_name: data.primary_contact_name ?? demoBusinessSettings.primary_contact_name,
@@ -202,8 +216,23 @@ export async function fetchBusinessSettings(): Promise<BusinessSettings> {
   }
 }
 
+function getSocialLinks(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  const links: Record<string, string> = {}
+  for (const [name, url] of Object.entries(value)) {
+    if (typeof url === 'string' && /^https?:\/\//i.test(url)) {
+      links[name] = url
+    }
+  }
+  return links
+}
+
 export async function fetchBusinessHours(): Promise<Array<{ day: string; hours: string }>> {
-  if (!isSupabaseConfigured) {
+  const businessId = getPublicBusinessId()
+  if (!isSupabaseConfigured || !businessId) {
     return demoHours
       .filter((row) => row.is_published)
       .map((row) => ({
@@ -215,6 +244,7 @@ export async function fetchBusinessHours(): Promise<Array<{ day: string; hours: 
   const { data, error } = await supabase
     .from('business_hours')
     .select('*')
+    .eq('business_id', businessId)
     .eq('is_published', true)
     .order('day_of_week', { ascending: true })
 
@@ -236,7 +266,8 @@ export async function fetchBusinessHours(): Promise<Array<{ day: string; hours: 
 }
 
 export async function fetchMenuData(): Promise<MenuCategory[]> {
-  if (!isSupabaseConfigured) {
+  const businessId = getPublicBusinessId()
+  if (!isSupabaseConfigured || !businessId) {
     return demoMenu
   }
 
@@ -261,6 +292,7 @@ export async function fetchMenuData(): Promise<MenuCategory[]> {
         )
       `,
     )
+    .eq('business_id', businessId)
     .eq('is_published', true)
     .order('display_order', { ascending: true })
 
@@ -284,13 +316,15 @@ export async function fetchMenuData(): Promise<MenuCategory[]> {
 }
 
 export async function fetchTestimonials(): Promise<Testimonial[]> {
-  if (!isSupabaseConfigured) {
+  const businessId = getPublicBusinessId()
+  if (!isSupabaseConfigured || !businessId) {
     return demoTestimonials
   }
 
   const { data, error } = await supabase
     .from('testimonials')
     .select('*')
+    .eq('business_id', businessId)
     .eq('is_published', true)
     .order('display_order', { ascending: true })
 
@@ -306,13 +340,15 @@ export async function fetchTestimonials(): Promise<Testimonial[]> {
 }
 
 export async function fetchFaqs(): Promise<FaqItem[]> {
-  if (!isSupabaseConfigured) {
+  const businessId = getPublicBusinessId()
+  if (!isSupabaseConfigured || !businessId) {
     return demoFaqs
   }
 
   const { data, error } = await supabase
     .from('faqs')
     .select('*')
+    .eq('business_id', businessId)
     .eq('is_published', true)
     .order('display_order', { ascending: true })
 
@@ -324,4 +360,24 @@ export async function fetchFaqs(): Promise<FaqItem[]> {
     question: item.question ?? 'Question',
     answer: item.answer ?? '',
   }))
+}
+
+export async function fetchGalleryItems(): Promise<GalleryItem[]> {
+  const businessId = getPublicBusinessId()
+  if (!isSupabaseConfigured || !businessId) {
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('gallery_items')
+    .select('id, image_url, title, alt_text, description, display_order')
+    .eq('business_id', businessId)
+    .eq('is_published', true)
+    .order('display_order', { ascending: true })
+
+  if (error || !data) {
+    return []
+  }
+
+  return data
 }

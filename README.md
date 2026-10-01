@@ -46,10 +46,13 @@ Then update the values with your own Supabase settings:
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-or-publishable-key
+VITE_PUBLIC_BUSINESS_ID=your-business-uuid
 VITE_APP_NAME=Savoria Restaurant Demo
 ```
 
 Use only the publishable/anon key in this frontend environment. Never put a Supabase service-role key in a `VITE_` variable or commit it to the repository. If credentials are missing, the public site falls back to demo content and admin login is unavailable.
+
+Set `VITE_PUBLIC_BUSINESS_ID` to the `businesses.id` UUID for the restaurant shown on the public website. The public content queries use this value to stay scoped to one restaurant. Restart Vite after changing `.env`.
 
 ## 4. Link the repository and apply migrations
 
@@ -70,7 +73,30 @@ npx supabase db push
 
 This creates the database schema, RLS policies, and storage policies defined by the migrations. Confirm the migrations completed in the CLI output and inspect the resulting tables and policies in the Supabase dashboard.
 
-## 5. Run the app locally
+## 5. Configure Storage and deploy Edge Functions
+
+The storage migration creates policies, not bucket records. In **Storage**, verify or create these buckets with the exact IDs:
+- `business-assets` — private
+- `business-public` — public, for published website imagery
+
+The gallery uploader uses paths such as `business/<business-id>/public/gallery/<file>`. Keep the existing object policies in place.
+
+Deploy the authenticated team and audit functions:
+
+```bash
+npx supabase functions deploy manage-team
+npx supabase functions deploy record-audit
+```
+
+Set the allowed site origin used for invitation redirects and CORS. The Supabase URL, anon key, and service-role key are supplied to deployed functions by Supabase; never place the service-role key in frontend variables.
+
+```bash
+npx supabase secrets set SITE_URL=http://localhost:5173
+```
+
+For production, set `SITE_URL` to the deployed website origin. Team invitations also require working Supabase Auth email delivery and the correct redirect allowlist.
+
+## 6. Run the app locally
 
 ```bash
 npm run dev
@@ -82,7 +108,7 @@ Open the local Vite URL:
 http://localhost:5173
 ```
 
-## 6. Configure an admin user
+## 7. Configure an admin user
 
 Create the user in **Authentication > Users** in the Supabase dashboard, then configure the corresponding business and profile records required by the schema and RLS policies. The protected admin routes are:
 
@@ -93,7 +119,7 @@ Create the user in **Authentication > Users** in the Supabase dashboard, then co
 
 Do not enable public sign-ups for a production admin system unless you also implement and verify a controlled account provisioning flow.
 
-## 7. Verify the project
+## 8. Verify the project
 
 Before shipping or pushing changes:
 
@@ -118,6 +144,7 @@ src/
 
 supabase/
   config.toml
+  functions/
   migrations/
   seed.sql
 ```
@@ -142,7 +169,10 @@ npm run dev
 
 ## Current integration boundary
 
-- The public content layer attempts to read business settings, hours, menu, testimonials, and FAQs from Supabase when configured.
-- The admin settings, menu, and hours forms currently save to the browser's local storage. They do not write changes to Supabase yet, and local edits are not shared across browsers or users.
-- Do not treat the current admin content forms as production-ready database management until Supabase-backed writes and authorization checks are implemented and verified.
-- The Supabase schema and RLS policies are the intended database security boundary; frontend route protection alone is not authorization.
+- The public site reads tenant-scoped settings, hours, menu, testimonials, FAQs, and published gallery records when `VITE_PUBLIC_BUSINESS_ID` is set.
+- Settings, menu, hours, reservations, and gallery pages use the existing database tables and RLS policies.
+- Public reservation requests require a valid `VITE_PUBLIC_BUSINESS_ID` and the additive `20261001000004_reservation_policy_correction.sql` migration. Apply it with `npx supabase db push` before enabling online requests; it creates no tables.
+- Team invitations and authenticated audit event writes require the deployed `manage-team` and `record-audit` Edge Functions.
+- Gallery uploads additionally require the two Storage buckets to exist with the expected privacy configuration.
+- The browser does not contain a service-role key. The Edge Functions perform their own user, business, and role checks before privileged operations.
+- The Supabase schema and RLS policies remain the database security boundary; frontend role-based controls are for usability, not authorization.
