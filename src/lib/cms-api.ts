@@ -235,13 +235,18 @@ export async function updateAdminMenuItem(
   itemId: string,
   changes: Partial<Omit<AdminMenuItem, 'id' | 'category_name'>>,
 ) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('menu_items')
     .update(changes)
     .eq('business_id', businessId)
     .eq('id', itemId)
+    .select('id')
+    .maybeSingle()
 
   if (error) throw error
+  if (!data) {
+    throw new Error('No menu item was updated. Check that it belongs to this restaurant and your role can edit it.')
+  }
 }
 
 export async function deleteAdminMenuItem(businessId: string, itemId: string) {

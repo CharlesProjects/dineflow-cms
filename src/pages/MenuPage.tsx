@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useBusinessProfile } from '../context/useBusinessProfile'
 import { tryRecordAuditEvent } from '../lib/audit'
 import { deleteBusinessImage, getBusinessImagePath, uploadBusinessImage, validateBusinessImage } from '../lib/business-images'
@@ -49,6 +49,7 @@ export function MenuPage() {
   const [status, setStatus] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [savingItemId, setSavingItemId] = useState<string | null>(null)
   const canEdit = profile?.role === 'ADMIN' || profile?.role === 'EDITOR'
   const isLoading = profileLoading || Boolean(profile?.business_id && loadedBusinessId !== profile.business_id)
 
@@ -136,7 +137,8 @@ export function MenuPage() {
     }
   }
 
-  const handleSave = async () => {
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     const normalizedPrice = draft.price.trim()
     if (!profile?.business_id || !canEdit || !draft.category_id || !draft.name.trim() || !/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(normalizedPrice)) {
       setErrorMessage('Choose a category, enter a dish name, and enter a price such as 20 or 20.50.')
@@ -247,7 +249,9 @@ export function MenuPage() {
 
   const handleItemUpdate = async (item: AdminMenuItem, changes: Partial<AdminMenuItem>) => {
     if (!profile?.business_id || !canEdit) return
+    setSavingItemId(item.id)
     setErrorMessage('')
+    setStatus('')
     try {
       await updateAdminMenuItem(profile.business_id, item.id, changes)
       setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, ...changes } : entry))
@@ -263,6 +267,8 @@ export function MenuPage() {
       setStatus(`Menu item updated${audited ? ' and recorded.' : '. Audit logging is unavailable.'}`)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to update menu item.')
+    } finally {
+      setSavingItemId(null)
     }
   }
 
@@ -308,9 +314,8 @@ export function MenuPage() {
         <p className="mt-2 text-sm text-[#74756c]">Changes are saved to this restaurant's database and protected by its current RLS policies.</p>
 
         {(profileLoading || isLoading) && <p role="status" className="mt-5 text-sm text-[#74756c]">Loading menu…</p>}
-        {(profileError || errorMessage) && <p role="alert" className="mt-5 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{errorMessage || profileError}</p>}
+        {profileError && <p role="alert" className="mt-5 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{profileError}</p>}
         {profile && !canEdit && <p role="status" className="mt-5 text-sm text-[#74756c]">Your VIEWER role can review the menu but cannot make changes.</p>}
-        {status && <p role="status" className="mt-3 text-sm font-medium text-[#526044]">{status}</p>}
 
         <div className="mt-6 border-y border-[#e7e4db] py-5">
           <h3 className="text-sm font-semibold">Add a category</h3>
@@ -320,6 +325,8 @@ export function MenuPage() {
             </label>
             <button type="button" onClick={handleCreateCategory} disabled={!canEdit || isSaving || !categoryName.trim()} className="cms-button-primary self-end disabled:cursor-not-allowed disabled:bg-stone-300">Create category</button>
           </div>
+          {errorMessage && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{errorMessage}</p>}
+          {status && <p role="status" className="mt-3 text-sm font-medium text-[#526044]">{status}</p>}
           {categories.length > 0 && (
             <div className="mt-4 divide-y divide-[#e7e4db] rounded-md border border-[#e7e4db] px-3">
               {categories.map((category) => {
@@ -341,7 +348,8 @@ export function MenuPage() {
           )}
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <form onSubmit={handleSave} className="mt-6">
+        <div className="grid gap-4 md:grid-cols-2">
           <label className="block text-sm font-medium text-stone-700">
             Category
             <select value={draft.category_id} onChange={(event) => handleChange('category_id', event.target.value)} className="cms-control mt-1.5" disabled={!canEdit || isLoading || categories.length === 0} required>
@@ -357,6 +365,7 @@ export function MenuPage() {
               onChange={(event) => handleChange('name', event.target.value)}
               className="cms-control mt-1.5"
               disabled={!canEdit || isLoading}
+              required
             />
           </label>
 
@@ -422,20 +431,25 @@ export function MenuPage() {
           </label>
         </div>
 
-        <div className="mt-6 flex items-center gap-3">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <button
-            type="button"
-            onClick={() => void handleSave()}
+            type="submit"
             disabled={!canEdit || isSaving || isLoading || categories.length === 0}
             className="cms-button-primary disabled:cursor-not-allowed disabled:bg-stone-300"
           >
             {isSaving ? 'Saving…' : 'Save dish'}
           </button>
+          {errorMessage && <p role="alert" className="text-sm text-red-700">{errorMessage}</p>}
+          {status && <p role="status" className="text-sm font-medium text-[#526044]">{status}</p>}
         </div>
+        <p className="mt-3 text-xs text-[#85857b]">Featured, availability, and publication choices above are saved when you save the dish.</p>
+        </form>
       </section>
 
       <section className="cms-panel p-5 sm:p-7">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a84f35]">Database menu · {items.length} dishes</p>
+        {errorMessage && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{errorMessage}</p>}
+        {status && <p role="status" className="mt-3 text-sm font-medium text-[#526044]">{status}</p>}
         <div className="mt-6 space-y-3">
           {!isLoading && items.length === 0 ? (
             <div className="rounded-md border border-dashed border-[#d9d7ce] px-5 py-9 text-center text-sm text-[#74756c]">No dishes have been added to this restaurant's menu.</div>
@@ -454,8 +468,9 @@ export function MenuPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-2 text-xs text-[#53544d]">Available<input type="checkbox" checked={item.is_available} disabled={!canEdit} onChange={() => void handleItemUpdate(item, { is_available: !item.is_available })} /></label>
-                  <label className="flex items-center gap-2 text-xs text-[#53544d]">Published<input type="checkbox" checked={item.is_published} disabled={!canEdit} onChange={() => void handleItemUpdate(item, { is_published: !item.is_published })} /></label>
+                  <label className="flex items-center gap-2 text-xs text-[#53544d]">Featured<input type="checkbox" checked={item.is_featured} disabled={!canEdit || savingItemId === item.id} onChange={() => void handleItemUpdate(item, { is_featured: !item.is_featured })} /></label>
+                  <label className="flex items-center gap-2 text-xs text-[#53544d]">Available<input type="checkbox" checked={item.is_available} disabled={!canEdit || savingItemId === item.id} onChange={() => void handleItemUpdate(item, { is_available: !item.is_available })} /></label>
+                  <label className="flex items-center gap-2 text-xs text-[#53544d]">Published<input type="checkbox" checked={item.is_published} disabled={!canEdit || savingItemId === item.id} onChange={() => void handleItemUpdate(item, { is_published: !item.is_published })} /></label>
                   <button
                     type="button"
                     onClick={() => void handleRemove(item.id)}

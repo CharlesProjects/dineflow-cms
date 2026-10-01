@@ -128,6 +128,11 @@ export function RestaurantHomePage() {
   const todayHours = hours.find((entry) => entry.day === currentDay)
   const phoneLink = business?.phone?.replace(/[^\d+]/g, '')
   const logoUrl = business?.social_links?.logo_url
+  const featuredItems = menuCategories.flatMap((category) =>
+    category.menu_items
+      .filter((item) => item.is_featured)
+      .map((item) => ({ ...item, categoryName: category.name })),
+  )
   const socialLinks = Object.entries(business?.social_links ?? {}).filter(([name, url]) =>
     name !== 'logo_url' && /^https?:\/\//i.test(url),
   )
@@ -210,6 +215,35 @@ export function RestaurantHomePage() {
             </div>
           </div>
         </section>
+
+        {featuredItems.length > 0 && (
+          <section aria-labelledby="featured-heading" className="px-5 py-14 sm:px-8 lg:px-12 lg:py-20">
+            <div className="mx-auto max-w-[1280px]">
+              <div className="mb-7 flex flex-col gap-3 border-b border-[#dedbd1] pb-5 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a84f35]">From the kitchen</p>
+                  <h2 id="featured-heading" className="font-display mt-2 text-4xl">Featured dishes</h2>
+                </div>
+                <a href="#menu" className="text-sm font-semibold text-[#813a28] hover:underline">See the full menu <span aria-hidden="true">↓</span></a>
+              </div>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {featuredItems.map((item, index) => (
+                  <article key={item.id} className="group">
+                    <div className="mb-4 aspect-[4/3] overflow-hidden rounded-lg bg-[#e9e6dc]">
+                      <img src={item.image_url || dishImages[index % dishImages.length]} alt={item.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+                    </div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#85857b]">{item.categoryName}</p>
+                    <div className="mt-1 flex items-baseline justify-between gap-3">
+                      <h3 className="font-display text-xl leading-snug">{item.name}</h3>
+                      <span className="shrink-0 text-sm font-semibold text-[#a84f35]">{formatCurrency(item.price)}</span>
+                    </div>
+                    {item.description && <p className="mt-2 max-w-md text-sm leading-6 text-[#74756c]">{item.description}</p>}
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         <section id="menu" className="scroll-mt-20 px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
           <div className="mx-auto max-w-[1280px]">
