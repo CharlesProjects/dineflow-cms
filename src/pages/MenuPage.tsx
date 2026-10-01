@@ -405,29 +405,40 @@ export function MenuPage() {
             />
           </label>
 
-          <label className="flex min-h-12 items-center gap-3 rounded-md border border-[#e7e4db] bg-[#fbfaf6] px-3 py-3 text-sm font-medium text-[#53544d]">
+          <label className="flex min-h-16 items-start gap-3 rounded-md border border-[#e7e4db] bg-[#fbfaf6] px-3 py-3 text-sm font-medium text-[#53544d]">
             <input
               type="checkbox"
               checked={draft.is_featured}
               onChange={(event) => handleChange('is_featured', event.target.checked)}
               disabled={!canEdit || isLoading}
+              className="mt-1"
             />
-            Feature this item on the homepage
+            <span>
+              <span className="block">Feature this item on the homepage</span>
+              <span className="mt-1 block text-xs font-normal leading-5 text-[#74756c]">Adds this dish to the Featured dishes section.</span>
+            </span>
           </label>
 
-          <label className="flex min-h-12 items-center gap-3 rounded-md border border-[#e7e4db] bg-[#fbfaf6] px-3 py-3 text-sm font-medium text-[#53544d]">
+          <label className="flex min-h-16 items-start gap-3 rounded-md border border-[#e7e4db] bg-[#fbfaf6] px-3 py-3 text-sm font-medium text-[#53544d]">
             <input
               type="checkbox"
               checked={draft.is_available}
               onChange={(event) => handleChange('is_available', event.target.checked)}
               disabled={!canEdit || isLoading}
+              className="mt-1"
             />
-            Available for ordering
+            <span>
+              <span className="block">Available for ordering</span>
+              <span className="mt-1 block text-xs font-normal leading-5 text-[#74756c]">Turn off to hide this dish from the public menu.</span>
+            </span>
           </label>
 
-          <label className="flex min-h-12 items-center gap-3 rounded-md border border-[#e7e4db] bg-[#fbfaf6] px-3 py-3 text-sm font-medium text-[#53544d]">
-            <input type="checkbox" checked={draft.is_published} disabled={!canEdit || isLoading} onChange={(event) => handleChange('is_published', event.target.checked)} />
-            Publish this item
+          <label className="flex min-h-16 items-start gap-3 rounded-md border border-[#e7e4db] bg-[#fbfaf6] px-3 py-3 text-sm font-medium text-[#53544d]">
+            <input type="checkbox" checked={draft.is_published} disabled={!canEdit || isLoading} onChange={(event) => handleChange('is_published', event.target.checked)} className="mt-1" />
+            <span>
+              <span className="block">Publish this item</span>
+              <span className="mt-1 block text-xs font-normal leading-5 text-[#74756c]">Guests can see it only when its category is published too.</span>
+            </span>
           </label>
         </div>
 
